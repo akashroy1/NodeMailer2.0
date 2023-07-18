@@ -1,17 +1,16 @@
 // Modules
-import express from "express";
-import dotenv from "dotenv";
-import morgan from "morgan";
-import cors from "cors";
+const express = require('express');
+const dotenv = require("dotenv");
+const cors = require("cors");
+const morgan = require("morgan");
+const fs = require('fs');
 
-// import connectDatabase from "./config/db.js";
-
+// Routers
+const mainRoute = require("./routes/mainRouter");
 
 //configure env
 dotenv.config();
 
-//databse config
-connectDatabase();
 
 // Cors options
 const corsOptions = {
@@ -27,18 +26,17 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(morgan("dev"));
 
-//routes
-// app.use("/api/v1/auth", authRoutes);
-
 //rest api
 app.get("/", (req, res) => {
-  res.send("Successful request. Try /api/v1/product for products page.");
+  res.send("Successful request. Try /api/v1/sendMails for products page.");
 });
+
+app.use("/api/v1/sendMails", mainRoute);
 
 //PORT
 const PORT = process.env.PORT || 5000;
 
-//run listen
+// Start the server
 app.listen(PORT, () => {
   console.log(`Server Running on port ${PORT}`);
 });

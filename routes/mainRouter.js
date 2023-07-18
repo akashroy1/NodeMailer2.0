@@ -1,9 +1,12 @@
-const express = require("express")
+const express = require("express");
+const multer = require("multer");
 
-const router = express.Router()
+const { mailSender } = require("../controllers/mailSender");
 
-router.get('/', (req, res)=>{
-    res.status(200).send("App Working")
-})
+const router = express.Router();
 
-module.exports = router
+const upload = multer({ dest: 'uploads/' });
+
+router.post("/", upload.fields([{ name: 'csvFile' }, { name: 'attachment', maxCount: 5 }]), mailSender);
+
+module.exports = router;
