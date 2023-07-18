@@ -4,6 +4,10 @@ const fs = require("fs");
 const ejs = require("ejs");
 const nodemailer = require("nodemailer");
 const path = require("path");
+const dotenv = require("dotenv");
+
+//configure env
+dotenv.config();
 
 // Function to check if an email address is valid
 function isValidEmail(email) {
@@ -79,8 +83,8 @@ exports.mailSender = (req, res) => {
         const transporter = nodemailer.createTransport({
           service: "gmail",
           auth: {
-            user: "idakashroy@gmail.com",
-            pass: "hzbgnbdlnmgdraqg",
+            user: process.env.GOOGLE_USERNAME,
+            pass: process.env.GOOGLE_PASSWORD,
           },
         });
 
