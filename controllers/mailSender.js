@@ -1,10 +1,9 @@
-const Papa = require('papaparse');
+const Papa = require("papaparse");
 const multer = require("multer");
-const fs = require('fs');
+const fs = require("fs");
 const ejs = require("ejs");
 const nodemailer = require("nodemailer");
 const path = require("path");
-
 
 // Function to check if an email address is valid
 function isValidEmail(email) {
@@ -12,33 +11,56 @@ function isValidEmail(email) {
   return emailPattern.test(email);
 }
 
+// Function to delete the attachment files
+function cleanupAttachments(attachments) {
+  attachments.forEach((attachment) => {
+    fs.unlink(attachment.path, (err) => {
+      if (err) {
+        console.error('Error deleting attachment:', err);
+      }
+    });
+  });
+}
+
 exports.mailSender = (req, res) => {
 
-  if (!req.file) {
-    return res.status(400).json({ error: 'No CSV file uploaded' });
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ error: "No CSV file uploaded" });
   }
 
-  const dataPath = req.file.path;
+  // Check if there is a CSV file in the request
+  const csvFile = req.files.find((file) => file.fieldname === "csvFile");
+  if (!csvFile) {
+    return res.status(400).json({ error: "No CSV file uploaded." });
+  }
 
-  fs.readFile(dataPath, 'utf8', (err, data) => {
+  fs.readFile(csvFile.path, "utf8", (err, data) => {
     if (err) {
-      return res.status(500).json({ error: 'Error reading the CSV file' });
+      return res.status(500).json({ error: "Error reading the CSV file" });
     }
     const results = Papa.parse(data, {
       header: true,
     });
-    
+
     // Delete the uploaded file after parsing is done
-    fs.unlink(dataPath, (unlinkErr) => {
+    fs.unlink(csvFile.path, (unlinkErr) => {
       if (unlinkErr) {
-        console.error('Error deleting the uploaded file:', unlinkErr);
+        console.error("Error deleting the uploaded file:", unlinkErr);
       }
     });
 
-    const templatePath = path.join(__dirname, '../templates/email.ejs');
-    fs.readFile(templatePath, 'utf8', (templateErr, templateData) => {
+    // Check if there are any attachments in the request
+    const attachments = req.files
+      .filter((file) => file.fieldname !== "csvFile")
+      .map((file) => ({
+        filename: file.originalname,
+        path: file.path,
+      }));
+
+    const templatePath = path.join(__dirname, "../templates/email.ejs");
+    fs.readFile(templatePath, "utf8", (templateErr, templateData) => {
       if (templateErr) {
-        console.error('Error reading the email template file:', templateErr);
+        console.error("Error reading the email template file:", templateErr);
         return;
       }
       results.data.forEach((object) => {
@@ -49,35 +71,41 @@ exports.mailSender = (req, res) => {
           return;
         }
 
+        const emailContent = ejs.render(templateData, { name });
+
+        // Log the email content before sending (for debugging purposes)
+        console.log('Email Content:', emailContent);
+
         const transporter = nodemailer.createTransport({
-          service: 'gmail',
+          service: "gmail",
           auth: {
-            user: 'idakashroy@gmail.com',
-            pass: 'hzbgnbdlnmgdraqg', 
+            user: "idakashroy@gmail.com",
+            pass: "hzbgnbdlnmgdraqg",
           },
         });
 
-        const emailContent = ejs.render(templateData, { name });
-
         const mailOptions = {
-          from: 'akash.roy2807@gmail.com', 
+          from: "akash.roy2807@gmail.com",
           to: email,
-          subject: 'Sample Email',
+          subject: "Sample Email",
           html: emailContent,
+          attachments: [...attachments]
         };
 
-        mailOptions.headers = { 'Content-Type': 'text/html' };
+        // mailOptions.headers = { "Content-Type": "text/html" };
+
 
         transporter.sendMail(mailOptions, (emailErr, info) => {
           if (emailErr) {
-            console.error('Error sending email:', emailErr);
+            console.error("Error sending email:", emailErr);
           } else {
-            console.log('Email sent:', info.response);
+            console.log("Email sent:", info.response);
           }
+          cleanupAttachments(attachments);
         });
       });
     });
-    
+  
     res.json({ data: results.data });
   });
-}
+};
